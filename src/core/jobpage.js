@@ -1,56 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Container, Form, Button, Dropdown, DropdownButton } from 'react-bootstrap';
-import { fetchJobs, fetchDepartments, fetchLocations, fetchJobFunctions } from './apicore';
+import {
+  Container,
+  Form,
+  Button,
+  Dropdown,
+  DropdownButton,
+  ListGroup,
+} from "react-bootstrap";
+import {
+  fetchJobs,
+  fetchDepartments,
+  fetchLocations,
+  fetchJobFunctions,
+  searchJobs,
+} from "./apicore";
 
 const JobPage = () => {
-    const [searchTerm, setSearchTerm] = useState('');
-  const [location, setLocation] = useState('');
-  const [department, setDepartment] = useState('');
-  const [jobFunction, setJobFunction] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [jobs, setJobs] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [locations, setLocations] = useState([]);
   const [functions, setFunctions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedFunction, setSelectedFunction] = useState("");
 
-  const loadDepartments = async () => {
+  const loadData = async () => {
     try {
-      const data = await fetchDepartments();
-      setDepartments(data);
+      setIsLoading(true);
+      const jobsData = await fetchJobs();
+      setJobs(jobsData);
+      const departmentsData = await fetchDepartments();
+      setDepartments(departmentsData);
+      const locationsData = await fetchLocations();
+      setLocations(locationsData);
+      const functionsData = await fetchJobFunctions();
+      setFunctions(functionsData);
     } catch (error) {
-      console.error('Error loading departments:', error);
+      console.error("Error loading data:", error);
       setIsError(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const loadLocations = async () => {
+  const handleSearch = async () => {
     try {
-      const data = await fetchLocations();
-      setLocations(data);
+      setIsLoading(true);
+      setIsError(false);
+      const searchData = await searchJobs(
+        searchTerm,
+        selectedLocation ? selectedLocation.id : "",
+        selectedDepartment ? selectedDepartment.id : "",
+        "",
+        selectedFunction ? selectedFunction.id : ""
+      );
+      setJobs(searchData);
     } catch (error) {
-      console.error('Error loading locations:', error);
-      setIsError(true);
-    }
-  };
-
-  const loadFunctions = async () => {
-    try {
-      const data = await fetchJobFunctions();
-      setFunctions(data);
-    } catch (error) {
-      console.error('Error loading job functions:', error);
-      setIsError(true);
-    }
-  };
-
-  const loadJobs = async () => {
-    try {
-      const data = await fetchJobs();
-      setJobs(data);
-    } catch (error) {
-      console.error('Error loading jobs:', error);
+      console.error("Error searching jobs:", error);
       setIsError(true);
     } finally {
       setIsLoading(false);
@@ -58,78 +68,105 @@ const JobPage = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setIsError(false);
-
-      try {
-        await Promise.all([loadDepartments(), loadLocations(), loadFunctions(), loadJobs()]);
-      } catch (error) {
-        console.error('Error loading data:', error);
-        setIsError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+    loadData();
   }, []);
 
   return (
     <Container>
       <h1 className="my-4">Job Openings</h1>
-      <Form.Control
-        type="text"
-        placeholder="Search by job title"
+      <Form.Group className="d-flex">
+        <Form.Control
+          type="text"
+          placeholder="Search by job title"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Button variant="primary" onClick={handleSearch} className="ml-2">
+          Search
+        </Button>
+      </Form.Group>
+      <DropdownButton
+        title={selectedDepartment ? selectedDepartment.title : "Department"}
         className="mb-3"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <DropdownButton title="Department" className="mb-3" onClick={(e) => setDepartment(e.target.value)}>
-        <Dropdown.Item value="" disabled>All Departments</Dropdown.Item>
+      >
+        <Dropdown.Item onClick={() => setSelectedDepartment("")}>
+          All Departments
+        </Dropdown.Item>
         {!isLoading &&
           departments.map((department) => (
-            <Dropdown.Item key={department.id} eventKey={department.id}>
+            <Dropdown.Item
+              key={department.id}
+              onClick={() => setSelectedDepartment(department)}
+            >
               {department.title}
             </Dropdown.Item>
           ))}
       </DropdownButton>
-      <DropdownButton title="Location" className="mb-3" onClick={(e) => setLocation(e.target.value)}>
-        <Dropdown.Item value="" disabled>All Locations</Dropdown.Item>
+      <DropdownButton
+        title={selectedLocation ? selectedLocation.title : "Location"}
+        className="mb-3"
+      >
+        <Dropdown.Item onClick={() => setSelectedLocation("")}>
+          All Locations
+        </Dropdown.Item>
         {!isLoading &&
           locations.map((location) => (
-            <Dropdown.Item key={location.id} eventKey={location.id}>
+            <Dropdown.Item
+              key={location.id}
+              onClick={() => setSelectedLocation(location)}
+            >
               {location.title}
             </Dropdown.Item>
           ))}
       </DropdownButton>
-      <DropdownButton title="Function" className="mb-3" onClick={(e) => setJobFunction(e.target.value)}>
-        <Dropdown.Item value="" disabled>All Functions</Dropdown.Item>
+      <DropdownButton
+        title={selectedFunction ? selectedFunction.title : "Function"}
+        className="mb-3"
+      >
+        <Dropdown.Item onClick={() => setSelectedFunction("")}>
+          All Functions
+        </Dropdown.Item>
         {!isLoading &&
           functions.map((func) => (
-            <Dropdown.Item key={func.id} eventKey={func.id}>
+            <Dropdown.Item
+              key={func.id}
+              onClick={() => setSelectedFunction(func)}
+            >
               {func.title}
             </Dropdown.Item>
           ))}
       </DropdownButton>
-      
+
       {isLoading && <p>Loading...</p>}
       {isError && <p>Error fetching jobs!</p>}
-      {!isLoading && !isError && jobs.length > 0 &&
-        jobs.map((job) => (
-          <div key={job.id} className="mb-3">
-            <h3>{job.title}</h3>
-            <p>{job.department.title}</p>
-            <p>{job.location.title}</p>
-            <Button variant="primary" href={job.applyUrl} target="_blank" rel="noopener noreferrer">
-              Apply
-            </Button>
-            <Link to={`/jobview/${job.id}`} >
-              View
-            </Link>
-          </div>
-        ))
-      }
+
+      {!isLoading && !isError && (
+        <ListGroup>
+          {jobs.map((job) => (
+            <ListGroup.Item
+              key={job.id}
+              className="d-flex justify-content-between"
+            >
+              <div>
+                <h3>{job.title}</h3>
+                <p>{job.location.title}</p>
+              </div>
+              <div className="d-flex align-items-center">
+                <Button
+                  variant="primary"
+                  href={job.applyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mr-2"
+                >
+                  Apply
+                </Button>
+                <Link to={`/jobview/${job.id}`}>View</Link>
+              </div>
+            </ListGroup.Item>
+          ))}
+        </ListGroup>
+      )}
     </Container>
   );
 };
